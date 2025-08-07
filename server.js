@@ -9,9 +9,9 @@ const { Resend } = require('resend');
 const app = express();
 const port = 3000;
 
-// Initialize Resend with your API key.
-// You can get this from your Resend dashboard.
-const resend = new Resend('re_WxzKkAY8_A82UnM6EwcPQziS6yMxpKY9z');
+// Initialize Resend with the API key from the environment variables.
+// This is more secure than hardcoding the key.
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Middleware to parse incoming request bodies
 app.use(bodyParser.json());
