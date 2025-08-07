@@ -1,64 +1,60 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-
-// Import the Resend library
 const { Resend } = require('resend');
+require('dotenv').config();
 
-// Create an Express application
 const app = express();
-const port = 3000;
-
-// Initialize Resend with the API key from the environment variables.
-// This is more secure than hardcoding the key.
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Middleware to parse incoming request bodies
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+const port = process.env.PORT || 3000;
 
 // Enable CORS for all routes
-app.use(cors());
+app.use(cors({
+  origin: 'https://server-back-end.vercel.app/' // This should match your frontend URL
+}));
 
-// Define the route for handling form submissions
+// This middleware is what makes the server compatible with your frontend code.
+// It parses application/x-www-form-urlencoded data from the request body.
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from the 'public' directory
+app.use(express.static('public'));
+
+// IMPORTANT: Do NOT hardcode your API key here.
+// The Vercel deployment will use the RESEND_API_KEY environment variable.
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 app.post('/send-message', async (req, res) => {
+    // The data sent from the form is now available in req.body
     const { name, email, subject, message } = req.body;
 
-    // Check if all fields are present
+    // Check that all required fields are present
     if (!name || !email || !subject || !message) {
-        return res.status(400).send('All form fields are required.');
+        return res.status(400).send('All fields are required.');
     }
 
     try {
-        // Send the email using the Resend API
         const { data, error } = await resend.emails.send({
-            from: 'Contact Form <onboarding@resend.dev>', // Must be a verified domain/email
-            to: ['katyperry7890@proton.me'], // Replace with the recipient's email address
+            from: 'Your Name <onboarding@resend.dev>', // Replace with your Resend-configured domain
+            to: ['your-email@example.com'], // Replace with the email address you want to receive messages
             subject: `New message from Contact Form: ${subject}`,
-            html: `
-                <p><strong>Name:</strong> ${name}</p>
-                <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Subject:</strong> ${subject}</p>
-                <p><strong>Message:</strong></p>
-                <p>${message}</p>
-            `,
+            html: `<p><strong>Name:</strong> ${name}</p>
+                   <p><strong>Email:</strong> ${email}</p>
+                   <p><strong>Subject:</strong> ${subject}</p>
+                   <p><strong>Message:</strong> ${message}</p>`,
         });
 
         if (error) {
-            console.error('Error sending email:', error);
-            return res.status(500).send('Error sending email.');
+            console.error(error);
+            return res.status(500).send(error.message);
         }
 
-        console.log('Message sent successfully!', data);
         res.status(200).send('Message sent successfully!');
-
     } catch (error) {
-        console.error('Error in Resend API call:', error);
-        res.status(500).send('Error sending email.');
+        console.error('Error sending email:', error);
+        res.status(500).send('An unexpected error occurred.');
     }
 });
 
-// Start the server
 app.listen(port, () => {
-    console.log(`Server listening at http://localhost:${port}`);
+    console.log(`Server listening on port ${port}`);
 });
